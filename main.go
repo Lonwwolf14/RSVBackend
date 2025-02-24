@@ -10,6 +10,7 @@ import (
 	"rsvbackend/internal/app"
 	"rsvbackend/internal/database"
 	"rsvbackend/internal/handlers"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -28,7 +29,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-var store *sessions.CookieStore // Declare as a global variable, initialize in main
+var store *sessions.CookieStore
 
 func main() {
 	err := godotenv.Load()
@@ -41,17 +42,26 @@ func main() {
 		port = "8080"
 	}
 
+	nodeID := os.Getenv("NODE_ID")
+	if nodeID == "" {
+		nodeID = "node1" // Default for single-node testing
+	}
+
+	peers := strings.Split(os.Getenv("PEERS"), ",")
+	if len(peers) == 1 && peers[0] == "" {
+		peers = []string{} // No peers by default
+	}
+
 	sessionKey := os.Getenv("SESSION_KEY")
 	if sessionKey == "" {
 		log.Println("SESSION_KEY not set, using insecure default")
-		sessionKey = "31392cf13a7c6b24431a653adb18842cd5230e9a9b3c0ba6cfade6ec072773d8" // Use your .env key as fallback for testing
+		sessionKey = "31392cf13a7c6b24431a653adb18842cd5230e9a9b3c0ba6cfade6ec072773d8"
 	}
 	store = sessions.NewCookieStore([]byte(sessionKey))
 	store.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 7, // 7 days
-		HttpOnly: true,      // Prevent JavaScript access
-		// Secure: true,     // Uncomment in production with HTTPS
+		MaxAge:   86400 * 7,
+		HttpOnly: true,
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -74,15 +84,14 @@ func main() {
 		log.Fatalf("Failed to load templates: %v", err)
 	}
 
-	appState := &app.AppState{
-		DB:        queries,
-		Store:     store,
-		Templates: templates,
-	}
+	appState := app.NewAppState(queries, store, templates, nodeID, peers)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/register", wrapHandler(appState, handlers.HandleRegister)).Methods("GET", "POST")
 	router.HandleFunc("/login", wrapHandler(appState, handlers.HandleLogin)).Methods("GET", "POST")
+	// Distributed system endpoints
+	router.HandleFunc("/request", wrapHandler(appState, handlers.HandleRequest)).Methods("POST")
+	router.HandleFunc("/reply", wrapHandler(appState, handlers.HandleReply)).Methods("POST")
 
 	protected := router.PathPrefix("/").Subrouter()
 	protected.Use(AuthMiddleware)
@@ -93,7 +102,7 @@ func main() {
 	protected.HandleFunc("/tickets", wrapHandler(appState, handlers.HandleViewTickets)).Methods("GET")
 	protected.HandleFunc("/available", wrapHandler(appState, handlers.HandleViewAvailableTickets)).Methods("GET")
 
-	fmt.Printf("Server running on port %s\n", port)
+	fmt.Printf("Node %s running on port %s with peers %v\n", nodeID, port, peers)
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 

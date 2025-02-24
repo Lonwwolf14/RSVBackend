@@ -122,7 +122,14 @@ func HandleHome(appState *app.AppState, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = appState.Templates.ExecuteTemplate(w, "home.html", map[string]string{"UserID": userID})
+	appState.Node.Mutex.Lock()
+	bookingBlocked := appState.Node.AnyCS
+	appState.Node.Mutex.Unlock()
+
+	err = appState.Templates.ExecuteTemplate(w, "home.html", map[string]interface{}{
+		"UserID":         userID,
+		"BookingBlocked": bookingBlocked,
+	})
 	if err != nil {
 		log.Println("Error rendering home template:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

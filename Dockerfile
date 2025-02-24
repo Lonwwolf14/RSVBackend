@@ -4,7 +4,6 @@ RUN apt-get update && apt-get install -y ca-certificates
 
 COPY rsvbackend /usr/bin/rsvbackend
 COPY templates /templates
-COPY .env /.env
 
 RUN chmod +x /usr/bin/rsvbackend
 

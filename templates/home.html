@@ -8,7 +8,11 @@
 <body>
     <h2>Welcome, logged-in user!</h2>
     <p>Your ID: {{.UserID}}</p>
+    {{if not .BookingBlocked}}
     <p><a href="/book">Book a Ticket</a></p>
+    {{else}}
+    <p>Booking is currently unavailable. Please wait...</p>
+    {{end}}
     <p><a href="/tickets">View My Tickets</a></p>
     <p><a href="/available">View Available Tickets</a></p>
     <p><a href="/logout">Logout</a></p>
