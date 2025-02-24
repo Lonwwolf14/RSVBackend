@@ -7,26 +7,17 @@ package database
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (
-    id,
-    email,
-    password
-)
-VALUES (
-    $1,
-    $2,
-    $3
-)
-RETURNING id, email, password
+INSERT INTO
+    users (id, email, password)
+VALUES
+    (?, ?, ?) RETURNING id, email, password
 `
 
 type CreateUserParams struct {
-	ID       uuid.UUID
+	ID       string
 	Email    string
 	Password string
 }
@@ -39,8 +30,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password FROM users
-WHERE email = $1
+SELECT
+    id, email, password
+FROM
+    users
+WHERE
+    email = ?
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {

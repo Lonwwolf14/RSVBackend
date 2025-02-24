@@ -24,6 +24,10 @@ func HandleRegister(appState *app.AppState, w http.ResponseWriter, r *http.Reque
 
 	email := r.FormValue("email")
 	password := r.FormValue("password")
+	if email == "" || password == "" {
+		appState.Templates.ExecuteTemplate(w, "register.html", map[string]string{"Error": "Email and password are required"})
+		return
+	}
 
 	hashedPassword, err := auth.HashPassword(password)
 	if err != nil {
@@ -32,15 +36,24 @@ func HandleRegister(appState *app.AppState, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	userID := uuid.New()
-	_, err = appState.DB.CreateUser(r.Context(), database.CreateUserParams{
-		ID:       userID,
+	// Generate UUID as string to match sqlc's CreateUserParams
+	userID := uuid.New().String() // Convert to string immediately
+	log.Printf("Creating user: id=%s, email=%s, password=%s", userID, email, hashedPassword)
+	params := database.CreateUserParams{
+		ID:       userID, // Now a string
 		Email:    email,
 		Password: hashedPassword,
-	})
+	}
+
+	_, err = appState.DB.CreateUser(r.Context(), params)
 	if err != nil {
-		log.Println("Error creating user:", err)
-		appState.Templates.ExecuteTemplate(w, "register.html", map[string]string{"Error": "Email already exists"})
+		// Check if it's a duplicate email error (SQLite error code 19 or similar)
+		if err.Error() == "UNIQUE constraint failed: users.email" { // Adjust based on actual error string
+			appState.Templates.ExecuteTemplate(w, "register.html", map[string]string{"Error": "Email already exists"})
+		} else {
+			log.Printf("Error creating user: params=%+v, err=%v", params, err)
+			appState.Templates.ExecuteTemplate(w, "register.html", map[string]string{"Error": "Server error"})
+		}
 		return
 	}
 
@@ -82,8 +95,8 @@ func HandleLogin(appState *app.AppState, w http.ResponseWriter, r *http.Request)
 		return
 	}
 	session.Values["authenticated"] = true
-	session.Values["userID"] = user.ID.String()
-	log.Printf("Setting session: authenticated=%v, userID=%v", session.Values["authenticated"], session.Values["userID"])
+	session.Values["userID"] = user.ID // ID is a string from sqlc
+	log.Printf("Setting session: authenticated=%v, userID=%s", session.Values["authenticated"], user.ID)
 	err = session.Save(r, w)
 	if err != nil {
 		log.Println("Error saving session:", err)
@@ -102,10 +115,8 @@ func HandleHome(appState *app.AppState, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var userID string
-	if id, ok := session.Values["userID"].(string); ok {
-		userID = id
-	} else {
+	userID, ok := session.Values["userID"].(string)
+	if !ok || userID == "" {
 		log.Println("userID not found in session or not a string")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return

@@ -1,51 +1,11 @@
-# Stage 1: Build the Go application
-FROM golang:1.22 AS builder
+FROM --platform=linux/amd64 debian:stable-slim
 
-# Set the working directory inside the container
-WORKDIR /app
+RUN apt-get update && apt-get install -y ca-certificates
 
-# Install goose for migrations
-RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+COPY rsvbackend /usr/bin/rsvbackend
+COPY templates /templates
+COPY .env /.env
 
-# Copy go.mod and go.sum files first (for caching dependencies)
-COPY go.mod go.sum ./
+RUN chmod +x /usr/bin/rsvbackend
 
-# Download dependencies
-RUN go mod download
-
-# Copy the entire project
-COPY . .
-
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o rsvbackend main.go
-
-# Stage 2: Create a minimal runtime image
-FROM alpine:latest
-
-# Install ca-certificates for HTTPS and dependencies for goose
-RUN apk --no-cache add ca-certificates bash
-
-# Set the working directory
-WORKDIR /root/
-
-# Copy the binary from the builder stage
-COPY --from=builder /app/rsvbackend .
-
-# Copy the templates directory
-COPY --from=builder /app/templates ./templates
-
-# Copy the SQL migrations
-COPY --from=builder /app/sql/schema ./sql/schema
-
-# Copy goose binary
-COPY --from=builder /go/bin/goose /usr/local/bin/goose
-
-# Expose port 8080
-EXPOSE 8080
-
-# Set environment variables (override in docker-compose or runtime)
-ENV PORT=8080 \
-    DATABASE_URL="postgres://postgres:postgres@db:5432/mine?sslmode=disable"
-
-# Run migrations and then start the application
-CMD ["sh", "-c", "goose -dir sql/schema postgres \"$DATABASE_URL\" up && ./rsvbackend"]
+CMD ["rsvbackend"]

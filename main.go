@@ -8,25 +8,14 @@ import (
 	"net/http"
 	"os"
 	"rsvbackend/internal/app"
-	"rsvbackend/internal/config"
 	"rsvbackend/internal/database"
 	"rsvbackend/internal/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
-
-var store = sessions.NewCookieStore([]byte("super-secret-key"))
-
-func initDB(DBURL string) (*sql.DB, error) {
-	DB, err := sql.Open("postgres", DBURL)
-	if err != nil {
-		return nil, err
-	}
-	return DB, nil
-}
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,35 +28,53 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+var store *sessions.CookieStore // Declare as a global variable, initialize in main
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Error loading .env file, using default port 8080")
+		log.Println("Error loading .env file, using defaults")
 	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	config, err := config.Read()
-	if err != nil {
-		log.Fatal(err)
+	sessionKey := os.Getenv("SESSION_KEY")
+	if sessionKey == "" {
+		log.Println("SESSION_KEY not set, using insecure default")
+		sessionKey = "31392cf13a7c6b24431a653adb18842cd5230e9a9b3c0ba6cfade6ec072773d8" // Use your .env key as fallback for testing
+	}
+	store = sessions.NewCookieStore([]byte(sessionKey))
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7, // 7 days
+		HttpOnly: true,      // Prevent JavaScript access
+		// Secure: true,     // Uncomment in production with HTTPS
 	}
 
-	DB, err := initDB(config.DBURL)
-	if err != nil {
-		log.Fatal(err)
+	dbURL := os.Getenv("DATABASE_URL")
+	var queries *database.Queries
+	if dbURL != "" {
+		db, err := sql.Open("libsql", dbURL)
+		if err != nil {
+			log.Fatalf("Failed to open database: %v", err)
+		}
+		if err = db.Ping(); err != nil {
+			log.Fatalf("Failed to ping database: %v", err)
+		}
+		queries = database.New(db)
+	} else {
+		log.Println("DATABASE_URL not set, running without DB endpoints")
 	}
-	defer DB.Close()
 
-	queries := database.New(DB)
 	templates, err := template.ParseGlob("templates/*.html")
 	if err != nil {
 		log.Fatalf("Failed to load templates: %v", err)
 	}
 
 	appState := &app.AppState{
-		AppConfig: config,
 		DB:        queries,
 		Store:     store,
 		Templates: templates,
@@ -87,10 +94,7 @@ func main() {
 	protected.HandleFunc("/available", wrapHandler(appState, handlers.HandleViewAvailableTickets)).Methods("GET")
 
 	fmt.Printf("Server running on port %s\n", port)
-	err = http.ListenAndServe(":"+port, router)
-	if err != nil {
-		log.Print(err)
-	}
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
 func wrapHandler(appState *app.AppState, handlerFunc func(*app.AppState, http.ResponseWriter, *http.Request)) http.HandlerFunc {

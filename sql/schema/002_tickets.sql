@@ -1,26 +1,23 @@
 -- +goose Up
 CREATE TABLE
     trains (
-        id UUID PRIMARY KEY,
+        id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        total_seats INT NOT NULL
+        total_seats INTEGER NOT NULL
     );
 
 CREATE TABLE
     tickets (
-        id UUID PRIMARY KEY,
-        train_id UUID NOT NULL,
-        user_id UUID NOT NULL,
-        seat_number INT NOT NULL,
-        booked_at TIMESTAMP
-        WITH
-            TIME ZONE DEFAULT NOW (),
-            FOREIGN KEY (train_id) REFERENCES trains (id),
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            UNIQUE (train_id, seat_number) -- Ensures a seat can only be booked once
+        id TEXT PRIMARY KEY,
+        train_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        seat_number INTEGER NOT NULL,
+        booked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (train_id) REFERENCES trains (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        UNIQUE (train_id, seat_number)
     );
 
--- Seed some sample trains
 INSERT INTO
     trains (id, name, total_seats)
 VALUES

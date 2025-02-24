@@ -6,24 +6,28 @@
 </head>
 
 <body>
-    <h2>Available Trains</h2>
-    <table border="1">
+    <h1>Available Trains</h1>
+    <table>
         <tr>
             <th>Train ID</th>
             <th>Train Name</th>
             <th>Total Seats</th>
             <th>Available Seats</th>
         </tr>
-        {{range .Trains}}
+        {{ range .Tickets }}
         <tr>
-            <td>{{.ID}}</td>
-            <td>{{.Name}}</td>
-            <td>{{.TotalSeats}}</td>
-            <td>{{.AvailableSeats}}</td>
+            <td>{{ .ID }}</td>
+            <td>{{ .Name }}</td>
+            <td>{{ .TotalSeats }}</td>
+            <td>{{ .AvailableSeats }}</td>
         </tr>
-        {{end}}
+        {{ else }}
+        <tr>
+            <td colspan="4">No trains available</td>
+        </tr>
+        {{ end }}
     </table>
-    <p><a href="/">Back to Home</a></p>
+    <a href="/">Back to Home</a>
 </body>
 
 </html>

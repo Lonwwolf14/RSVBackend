@@ -8,21 +8,31 @@ package database
 import (
 	"context"
 	"database/sql"
-
-	"github.com/google/uuid"
 )
 
 const createTicket = `-- name: CreateTicket :one
 INSERT INTO tickets (id, train_id, user_id, seat_number)
-VALUES ($1, $2, $3, $4)
+SELECT ?1, ?2, ?3, ?4
+WHERE EXISTS (
+    SELECT 1 
+    FROM trains t
+    WHERE t.id = ?2 
+    AND ?4 BETWEEN 1 AND t.total_seats
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM tickets tk 
+        WHERE tk.train_id = t.id 
+        AND tk.seat_number = ?4
+    )
+)
 RETURNING id, train_id, user_id, seat_number, booked_at
 `
 
 type CreateTicketParams struct {
-	ID         uuid.UUID
-	TrainID    uuid.UUID
-	UserID     uuid.UUID
-	SeatNumber int32
+	ID         string
+	TrainID    string
+	UserID     string
+	SeatNumber int64
 }
 
 func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error) {
@@ -45,12 +55,12 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Tic
 
 const deleteTicket = `-- name: DeleteTicket :exec
 DELETE FROM tickets
-WHERE id = $1 AND user_id = $2
+WHERE id = ? AND user_id = ?
 `
 
 type DeleteTicketParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
+	ID     string
+	UserID string
 }
 
 func (q *Queries) DeleteTicket(ctx context.Context, arg DeleteTicketParams) error {
@@ -67,10 +77,10 @@ GROUP BY t.id, t.name, t.total_seats
 `
 
 type GetAvailableTicketsRow struct {
-	ID             uuid.UUID
+	ID             string
 	Name           string
-	TotalSeats     int32
-	AvailableSeats int32
+	TotalSeats     int64
+	AvailableSeats interface{}
 }
 
 func (q *Queries) GetAvailableTickets(ctx context.Context) ([]GetAvailableTicketsRow, error) {
@@ -105,17 +115,17 @@ const getUserTickets = `-- name: GetUserTickets :many
 SELECT tk.id, t.name, tk.seat_number, tk.booked_at
 FROM tickets tk
 JOIN trains t ON tk.train_id = t.id
-WHERE tk.user_id = $1
+WHERE tk.user_id = ?
 `
 
 type GetUserTicketsRow struct {
-	ID         uuid.UUID
+	ID         string
 	Name       string
-	SeatNumber int32
+	SeatNumber int64
 	BookedAt   sql.NullTime
 }
 
-func (q *Queries) GetUserTickets(ctx context.Context, userID uuid.UUID) ([]GetUserTicketsRow, error) {
+func (q *Queries) GetUserTickets(ctx context.Context, userID string) ([]GetUserTicketsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUserTickets, userID)
 	if err != nil {
 		return nil, err
