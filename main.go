@@ -81,6 +81,10 @@ func main() {
 	protected.Use(AuthMiddleware)
 	protected.HandleFunc("/", wrapHandler(appState, handlers.HandleHome))
 	protected.HandleFunc("/logout", wrapHandler(appState, handlers.HandleLogout)).Methods("GET")
+	protected.HandleFunc("/book", wrapHandler(appState, handlers.HandleBookTicket)).Methods("GET", "POST")
+	protected.HandleFunc("/cancel", wrapHandler(appState, handlers.HandleCancelTicket)).Methods("GET")
+	protected.HandleFunc("/tickets", wrapHandler(appState, handlers.HandleViewTickets)).Methods("GET")
+	protected.HandleFunc("/available", wrapHandler(appState, handlers.HandleViewAvailableTickets)).Methods("GET")
 
 	fmt.Printf("Server running on port %s\n", port)
 	err = http.ListenAndServe(":"+port, router)

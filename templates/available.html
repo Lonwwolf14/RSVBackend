@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Available Tickets</title>
+</head>
+
+<body>
+    <h2>Available Trains</h2>
+    <table border="1">
+        <tr>
+            <th>Train ID</th>
+            <th>Train Name</th>
+            <th>Total Seats</th>
+            <th>Available Seats</th>
+        </tr>
+        {{range .Trains}}
+        <tr>
+            <td>{{.ID}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.TotalSeats}}</td>
+            <td>{{.AvailableSeats}}</td>
+        </tr>
+        {{end}}
+    </table>
+    <p><a href="/">Back to Home</a></p>
+</body>
+
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Book Ticket</title>
+</head>
+
+<body>
+    <h2>Book a Train Ticket</h2>
+    <form method="POST" action="/book">
+        <label>Select Train:</label><br>
+        <select name="train_id" required>
+            {{range .Trains}}
+            <option value="{{.ID}}">{{.Name}} ({{.AvailableSeats}} seats available)</option>
+            {{end}}
+        </select><br>
+        <label>Seat Number:</label><br>
+        <input type="number" name="seat_number" min="1" required><br>
+        <input type="submit" value="Book Ticket">
+    </form>
+    {{if .Error}}<p style="color:red">{{.Error}}</p>{{end}}
+    <p><a href="/">Back to Home</a></p>
+</body>
+
+</html>

@@ -5,8 +5,24 @@
 package database
 
 import (
+	"database/sql"
+
 	"github.com/google/uuid"
 )
+
+type Ticket struct {
+	ID         uuid.UUID
+	TrainID    uuid.UUID
+	UserID     uuid.UUID
+	SeatNumber int32
+	BookedAt   sql.NullTime
+}
+
+type Train struct {
+	ID         uuid.UUID
+	Name       string
+	TotalSeats int32
+}
 
 type User struct {
 	ID       uuid.UUID
