@@ -1,0 +1,9 @@
+version: "2"
+sql:
+  - schema: "sql/schema"    # where your migrations live
+    queries: "sql/queries"  # where your .sql query files live
+    engine: "sqlite"
+    gen:
+      go:
+        out: "internal/database"
+

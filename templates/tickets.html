@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My Tickets</title>
+</head>
+
+<body>
+    <h2>Your Tickets</h2>
+    {{if .Tickets}}
+    <table border="1">
+        <tr>
+            <th>Ticket ID</th>
+            <th>Train Name</th>
+            <th>Seat Number</th>
+            <th>Booked At</th>
+            <th>Action</th>
+        </tr>
+        {{range .Tickets}}
+        <tr>
+            <td>{{.ID}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.SeatNumber}}</td>
+            <td>{{.BookedAt}}</td>
+            <td><a href="/cancel?ticket_id={{.ID}}">Cancel</a></td>
+        </tr>
+        {{end}}
+    </table>
+    {{else}}
+    <p>No tickets booked yet.</p>
+    {{end}}
+    <p><a href="/">Back to Home</a></p>
+</body>
+
+</html>

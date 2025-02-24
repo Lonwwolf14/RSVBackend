@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Available Tickets</title>
+</head>
+
+<body>
+    <h1>Available Trains</h1>
+    <table>
+        <tr>
+            <th>Train ID</th>
+            <th>Train Name</th>
+            <th>Total Seats</th>
+            <th>Available Seats</th>
+        </tr>
+        {{ range .Tickets }}
+        <tr>
+            <td>{{ .ID }}</td>
+            <td>{{ .Name }}</td>
+            <td>{{ .TotalSeats }}</td>
+            <td>{{ .AvailableSeats }}</td>
+        </tr>
+        {{ else }}
+        <tr>
+            <td colspan="4">No trains available</td>
+        </tr>
+        {{ end }}
+    </table>
+    <a href="/">Back to Home</a>
+</body>
+
+</html>

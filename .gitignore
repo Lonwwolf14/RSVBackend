@@ -1,0 +1,47 @@
+# Binaries and build outputs
+rsvbackend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go-specific
+*.test
+*.out
+vendor/
+profile.cov
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+
+# Environment files
+.env
+*.env.local
+*.env.development
+*.env.test
+*.env.production
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker-specific
+docker-compose.override.yml
+.dockerignore
+Dockerfile.lock
+
+# Test coverage
+coverage.txt
+cover.out
+
+# Database-specific
+*.sql.bak   
