@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,12 @@ import (
 	"rsvbackend/internal/handlers"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
+
+var store = sessions.NewCookieStore([]byte("super-secret-key"))
 
 func initDB(DBURL string) (*sql.DB, error) {
 	DB, err := sql.Open("postgres", DBURL)
@@ -24,9 +28,18 @@ func initDB(DBURL string) (*sql.DB, error) {
 	return DB, nil
 }
 
-func main() {
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, "session-name")
+		if err != nil || session.Values["authenticated"] != true || session.Values["userID"] == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
-	//Getting port from .env file
+func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("Error loading .env file, using default port 8080")
@@ -36,30 +49,39 @@ func main() {
 		port = "8080"
 	}
 
-	//Getting the config data
 	config, err := config.Read()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//Database
 	DB, err := initDB(config.DBURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer DB.Close()
 
-	//Initialising queries
 	queries := database.New(DB)
+	templates, err := template.ParseGlob("templates/*.html")
+	if err != nil {
+		log.Fatalf("Failed to load templates: %v", err)
+	}
+
 	appState := &app.AppState{
 		AppConfig: config,
 		DB:        queries,
+		Store:     store,
+		Templates: templates,
 	}
 
-	//Mux
 	router := mux.NewRouter()
+	router.HandleFunc("/register", wrapHandler(appState, handlers.HandleRegister)).Methods("GET", "POST")
+	router.HandleFunc("/login", wrapHandler(appState, handlers.HandleLogin)).Methods("GET", "POST")
 
-	router.HandleFunc("/", wrapHandler(appState, handlers.HandleHome))
+	protected := router.PathPrefix("/").Subrouter()
+	protected.Use(AuthMiddleware)
+	protected.HandleFunc("/", wrapHandler(appState, handlers.HandleHome))
+	protected.HandleFunc("/logout", wrapHandler(appState, handlers.HandleLogout)).Methods("GET")
+
 	fmt.Printf("Server running on port %s\n", port)
 	err = http.ListenAndServe(":"+port, router)
 	if err != nil {

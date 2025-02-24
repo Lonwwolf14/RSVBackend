@@ -1,0 +1,68 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22' # Adjust to your Go version in go.mod
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+
+      - name: Generate sqlc code
+        run: sqlc generate
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/mine?sslmode=disable"
+        run: goose -dir sql/schema up
+
+      - name: Run tests
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/mine?sslmode=disable"
+        run: go test ./... -v
+
+      - name: Build the application
+        run: go build -o rsvbackend main.go
+
+      - name: Lint code (optional)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=3m
